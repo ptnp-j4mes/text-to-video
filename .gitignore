@@ -20,6 +20,7 @@ storage/temp/*
 !storage/cache/.gitkeep
 !storage/temp/.gitkeep
 *.log
+*.tsbuildinfo
 models/SadTalker/checkpoints/*
 !models/SadTalker/checkpoints/.gitkeep
 models/SadTalker/gfpgan/weights/*
