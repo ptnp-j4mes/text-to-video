@@ -44,7 +44,7 @@ This repository is wired for local development with:
 From the repo root:
 
 ```bash
-cd /Users/bic-patanaphong/Documents/GitHub/text-to-video
+cd  /GitHub/text-to-video
 source .venv/bin/activate
 bash scripts/run_all.sh
 ```
@@ -58,19 +58,19 @@ That command starts:
 If you prefer separate terminals:
 
 ```bash
-cd /Users/bic-patanaphong/Documents/GitHub/text-to-video
+cd  /GitHub/text-to-video
 source .venv/bin/activate
 python -m uvicorn services.api.app.main:app --host 127.0.0.1 --port 5432 --reload
 ```
 
 ```bash
-cd /Users/bic-patanaphong/Documents/GitHub/text-to-video
+cd  /GitHub/text-to-video
 source .venv/bin/activate
 python services/worker/worker.py
 ```
 
 ```bash
-cd /Users/bic-patanaphong/Documents/GitHub/text-to-video/apps/web
+cd /GitHub/text-to-video/apps/web
 npm run dev
 ```
 
