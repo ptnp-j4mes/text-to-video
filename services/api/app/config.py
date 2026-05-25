@@ -69,6 +69,8 @@ class Settings:
     voice_pitch_shift_semitones: float | None = None
     voice_speed: float | None = None
     voice_low_mid_gain_db: float | None = None
+    voice_emotion_preset: str = "warm_encouraging"
+    voice_emotion_strength: float = 0.55
     ffmpeg_command: str = "ffmpeg"
 
     max_concurrent_jobs: int = 1
@@ -137,6 +139,8 @@ def get_settings() -> Settings:
         voice_pitch_shift_semitones=_coerce_optional_float(merged.get("VOICE_PITCH_SHIFT_SEMITONES")),
         voice_speed=_coerce_optional_float(merged.get("VOICE_SPEED")),
         voice_low_mid_gain_db=_coerce_optional_float(merged.get("VOICE_LOW_MID_GAIN_DB")),
+        voice_emotion_preset=merged.get("VOICE_EMOTION_PRESET", "warm_encouraging"),
+        voice_emotion_strength=_coerce(merged.get("VOICE_EMOTION_STRENGTH", "0.55"), float, 0.55),
         ffmpeg_command=merged.get("FFMPEG_COMMAND", "ffmpeg"),
         max_concurrent_jobs=_coerce(merged.get("MAX_CONCURRENT_JOBS", "1"), int, 1),
     )
