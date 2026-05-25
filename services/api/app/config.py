@@ -28,6 +28,15 @@ def _coerce(value: str, caster: Callable[[str], Any], default: Any) -> Any:
         return default
 
 
+def _coerce_optional_float(value: str | None) -> float | None:
+    if value is None or value == "":
+        return None
+    try:
+        return float(value)
+    except Exception:
+        return None
+
+
 @dataclass(slots=True)
 class Settings:
     app_env: str = "local"
@@ -55,6 +64,13 @@ class Settings:
     sadtalker_script: str = "inference.py"
     sadtalker_result_subdir: str = "results"
     enable_wav2lip_refine: bool = False
+
+    voice_postprocess_preset: str = "elderly_warm"
+    voice_pitch_shift_semitones: float | None = None
+    voice_speed: float | None = None
+    voice_low_mid_gain_db: float | None = None
+    ffmpeg_command: str = "ffmpeg"
+
     max_concurrent_jobs: int = 1
 
     @property
@@ -117,5 +133,10 @@ def get_settings() -> Settings:
         sadtalker_script=merged.get("SADTALKER_SCRIPT", "inference.py"),
         sadtalker_result_subdir=merged.get("SADTALKER_RESULT_SUBDIR", "results"),
         enable_wav2lip_refine=merged.get("ENABLE_WAV2LIP_REFINE", "false").lower() in {"1", "true", "yes", "on"},
+        voice_postprocess_preset=merged.get("VOICE_POSTPROCESS_PRESET", "elderly_warm"),
+        voice_pitch_shift_semitones=_coerce_optional_float(merged.get("VOICE_PITCH_SHIFT_SEMITONES")),
+        voice_speed=_coerce_optional_float(merged.get("VOICE_SPEED")),
+        voice_low_mid_gain_db=_coerce_optional_float(merged.get("VOICE_LOW_MID_GAIN_DB")),
+        ffmpeg_command=merged.get("FFMPEG_COMMAND", "ffmpeg"),
         max_concurrent_jobs=_coerce(merged.get("MAX_CONCURRENT_JOBS", "1"), int, 1),
     )
