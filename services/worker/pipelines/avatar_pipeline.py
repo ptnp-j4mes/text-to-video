@@ -9,6 +9,7 @@ from services.api.app.config import get_settings
 from services.worker.engines.omnivoice_engine import OmniVoiceEngine
 from services.worker.engines.sadtalker_engine import SadTalkerEngine
 from services.worker.utils.audio_postprocess import build_voice_postprocess_options, postprocess_voice
+from services.worker.utils.text_prosody import build_text_prosody_options, prepare_spoken_text
 
 settings = get_settings()
 
@@ -53,8 +54,14 @@ class AvatarPipeline:
         duration_seconds = options.get("target_duration_seconds")
         duration_seconds = duration_seconds if isinstance(duration_seconds, int) else None
 
+        prosody_options = build_text_prosody_options(
+            options=options,
+            settings=settings,
+        )
+        spoken_text = prepare_spoken_text(job.text, prosody=prosody_options)
+
         generated_raw_audio = self.tts.synthesize(
-            text=job.text,
+            text=spoken_text,
             reference_audio=job.reference_audio,
             output_audio=raw_audio_output,
             reference_text=reference_text if isinstance(reference_text, str) else None,
