@@ -1,4 +1,4 @@
-import type { HealthResponse, ImageItem, JobItem, VoiceItem } from "@/lib/types";
+import type { HealthResponse, ImageItem, JobItem, ScriptGenerateResponse, VoiceItem } from "@/lib/types";
 
 const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:5432";
 
@@ -104,6 +104,22 @@ export async function uploadImage(form: FormData): Promise<ImageItem> {
   return (await response.json()) as ImageItem;
 }
 
+export async function generateScript(payload: {
+  topic: string;
+  duration_seconds: number;
+  language: string;
+  mood: string;
+  audience: string;
+}): Promise<ScriptGenerateResponse> {
+  return requestJson<ScriptGenerateResponse>("/scripts/generate", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function createAvatarJob(payload: {
   voice_id: string;
   image_id: string;
@@ -114,6 +130,12 @@ export async function createAvatarJob(payload: {
     output_format: string;
     motion_preset: string;
     target_duration_seconds: number;
+    voice_age_preset?: string;
+    voice_pitch_shift_semitones?: number | null;
+    voice_speed?: number | null;
+    voice_low_mid_gain_db?: number | null;
+    voice_emotion_preset?: string;
+    voice_emotion_strength?: number;
   };
 }): Promise<{ job_id: string; status: string }> {
   return requestJson<{ job_id: string; status: string }>("/jobs/generate-avatar", {
