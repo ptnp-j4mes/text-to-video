@@ -36,3 +36,11 @@ export type JobItem = {
   started_at?: string | null;
   finished_at?: string | null;
 };
+
+export type ScriptGenerateResponse = {
+  hook: string;
+  script: string;
+  subtitles: string[];
+  caption: string;
+  source: "ai" | "fallback";
+};
