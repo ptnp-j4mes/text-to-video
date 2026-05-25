@@ -47,6 +47,33 @@ VOICE_PRESETS: dict[str, dict[str, float | bool]] = {
     },
 }
 
+# Fine emotional tuning on top of the age preset. These are intentionally small
+# deltas so the voice stays natural and does not become robotic.
+EMOTION_AUDIO_DELTAS: dict[str, dict[str, float]] = {
+    "none": {},
+    "neutral": {},
+    "warm_encouraging": {
+        "pitch_shift_semitones": 0.25,
+        "speed": 0.98,
+        "low_mid_gain_db": 0.4,
+    },
+    "gentle_reflective": {
+        "pitch_shift_semitones": -0.15,
+        "speed": 0.94,
+        "low_mid_gain_db": 0.6,
+    },
+    "hopeful": {
+        "pitch_shift_semitones": 0.45,
+        "speed": 1.01,
+        "low_mid_gain_db": 0.1,
+    },
+    "sad_soft": {
+        "pitch_shift_semitones": -0.35,
+        "speed": 0.91,
+        "low_mid_gain_db": 0.8,
+    },
+}
+
 
 def _as_float(value: Any, default: float) -> float:
     if value is None:
@@ -75,6 +102,14 @@ def build_voice_postprocess_options(
     pitch_default = float(preset_values["pitch_shift_semitones"])
     speed_default = float(preset_values["speed"])
     low_mid_default = float(preset_values["low_mid_gain_db"])
+
+    emotion_preset = str(options.get("voice_emotion_preset") or settings.voice_emotion_preset or "warm_encouraging").strip().lower()
+    emotion_strength = _clamp(_as_float(options.get("voice_emotion_strength"), settings.voice_emotion_strength), 0.0, 1.0)
+    emotion_deltas = EMOTION_AUDIO_DELTAS.get(emotion_preset, EMOTION_AUDIO_DELTAS["warm_encouraging"])
+
+    pitch_default += float(emotion_deltas.get("pitch_shift_semitones", 0.0)) * emotion_strength
+    speed_default *= 1 + ((float(emotion_deltas.get("speed", 1.0)) - 1) * emotion_strength)
+    low_mid_default += float(emotion_deltas.get("low_mid_gain_db", 0.0)) * emotion_strength
 
     pitch_shift_semitones = _as_float(
         options.get("voice_pitch_shift_semitones"),
