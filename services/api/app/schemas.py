@@ -29,8 +29,15 @@ class ImageResponse(BaseModel):
 class JobOptions(BaseModel):
     refine_lipsync: bool = False
     output_format: str = "mp4"
-    motion_preset: str = "default"
+    motion_preset: str = "light_static"
     target_duration_seconds: int = Field(default=15, ge=15, le=30)
+
+    # Voice post-processing preset for short-form motivational videos.
+    # Supported values in the worker are: none, natural, elderly_warm, elderly_deep.
+    voice_age_preset: str = "elderly_warm"
+    voice_pitch_shift_semitones: float | None = Field(default=None, ge=-6.0, le=3.0)
+    voice_speed: float | None = Field(default=None, ge=0.75, le=1.15)
+    voice_low_mid_gain_db: float | None = Field(default=None, ge=-6.0, le=6.0)
 
 
 class JobCreateRequest(BaseModel):
