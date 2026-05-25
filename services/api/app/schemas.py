@@ -39,6 +39,11 @@ class JobOptions(BaseModel):
     voice_speed: float | None = Field(default=None, ge=0.75, le=1.15)
     voice_low_mid_gain_db: float | None = Field(default=None, ge=-6.0, le=6.0)
 
+    # Emotional delivery control. This is lightweight prosody guidance, not model training.
+    # Supported values: none, neutral, warm_encouraging, gentle_reflective, hopeful, sad_soft.
+    voice_emotion_preset: str = "warm_encouraging"
+    voice_emotion_strength: float = Field(default=0.55, ge=0.0, le=1.0)
+
 
 class JobCreateRequest(BaseModel):
     voice_id: str
