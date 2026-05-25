@@ -20,18 +20,26 @@ class MotionConfig:
 
 
 def build_motion_config(motion_preset: str | None) -> MotionConfig:
+    """
+    Build SadTalker motion settings.
+
+    For Reel/TikTok/IG output, keep motion conservative and preserve the
+    1080x1920 processed background. This reduces warping, background movement,
+    and unexpected aspect-ratio changes.
+    """
     if motion_preset in {"light", "light_static", "static", "static_background"}:
         return MotionConfig(
             preprocess="full",
-            still_mode=False,
-            expression_scale="0.72",
+            still_mode=True,
+            expression_scale="0.55",
             lock_background=True,
         )
+
     return MotionConfig(
-        preprocess="crop",
-        still_mode=False,
-        expression_scale="1.0",
-        lock_background=False,
+        preprocess="full",
+        still_mode=True,
+        expression_scale="0.7",
+        lock_background=True,
     )
 
 
@@ -57,6 +65,7 @@ class SadTalkerEngine:
                 f"Python executable '{self.python}' was not found on PATH. "
                 "Install or adjust SADTALKER_PYTHON."
             )
+
         if not self.script.exists():
             raise FileNotFoundError(
                 f"SadTalker script not found at {self.script}. "
@@ -83,16 +92,25 @@ class SadTalkerEngine:
             "--expression_scale",
             motion_config.expression_scale,
         ]
+
         if motion_config.still_mode:
             args.append("--still")
 
         run_command(args, cwd=self.repo)
 
-        candidates = sorted(Path(result_dir).rglob("*.mp4"), key=lambda item: item.stat().st_mtime, reverse=True)
+        candidates = sorted(
+            Path(result_dir).rglob("*.mp4"),
+            key=lambda item: item.stat().st_mtime,
+            reverse=True,
+        )
+
         if not candidates:
-            raise FileNotFoundError(f"SadTalker completed but did not produce any mp4 files in {result_dir}")
+            raise FileNotFoundError(
+                f"SadTalker completed but did not produce any mp4 files in {result_dir}"
+            )
 
         produced = candidates[0]
+
         if motion_config.lock_background:
             return composite_person_video(
                 source_image=source_image,
@@ -102,4 +120,5 @@ class SadTalkerEngine:
 
         if produced.resolve() != output_video.resolve():
             output_video.write_bytes(produced.read_bytes())
+
         return output_video

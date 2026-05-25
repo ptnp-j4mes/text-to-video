@@ -18,16 +18,25 @@ try:
     from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 except Exception:  # pragma: no cover
     Image = None
-    ImageOps = None
     ImageEnhance = None
     ImageFilter = None
+    ImageOps = None
 
 
 TARGET_WIDTH = 1080
 TARGET_HEIGHT = 1920
 TARGET_SIZE = (TARGET_WIDTH, TARGET_HEIGHT)
+TARGET_RATIO = TARGET_WIDTH / TARGET_HEIGHT
+
 MIN_FACE_SIZE = 60
+
+# Face position on final 9:16 canvas.
+# 0.40 means the face center will sit around 40% from the top.
 FACE_TARGET_Y_RATIO = 0.40
+
+# Foreground crop size on the final canvas.
+# Keeping it smaller than the full canvas leaves a cinematic blurred background
+# and lower space for subtitles.
 FOREGROUND_WIDTH_RATIO = 0.86
 FOREGROUND_HEIGHT_RATIO = 0.74
 
@@ -63,18 +72,27 @@ def _detect_faces_pil(image: "Image.Image") -> list[FaceBox]:
 def _largest_face(faces: list[FaceBox]) -> FaceBox | None:
     if not faces:
         return None
-    return max(faces, key=lambda f: f.w * f.h)
+    return max(faces, key=lambda face: face.w * face.h)
 
 
 def detect_face(image_path: Path) -> bool:
-    if cv2 is None or Image is None:
+    """
+    Keep upload behavior permissive.
+
+    The upload route currently blocks when this returns False.
+    For Reel/TikTok/IG preprocessing, we still want readable images without a
+    detected face to pass through so normalize_portrait() can create a valid
+    1080x1920 fallback canvas.
+
+    Actual face-aware cropping still happens inside normalize_portrait().
+    """
+    if Image is None or ImageOps is None:
         return True
 
     try:
         with Image.open(image_path) as image:
-            image = ImageOps.exif_transpose(image)
-            faces = _detect_faces_pil(image)
-            return len(faces) > 0
+            ImageOps.exif_transpose(image)
+            return True
     except Exception:
         return False
 
@@ -88,11 +106,12 @@ def _crop_box_inside_image(
     center_x: float,
     center_y: float,
 ) -> tuple[int, int, int, int]:
-    crop_width = min(crop_width, width)
-    crop_height = min(crop_height, height)
+    crop_width = max(1, min(crop_width, width))
+    crop_height = max(1, min(crop_height, height))
 
     left = int(round(center_x - crop_width / 2))
     top = int(round(center_y - crop_height / 2))
+
     left = max(0, min(left, width - crop_width))
     top = max(0, min(top, height - crop_height))
 
@@ -102,12 +121,15 @@ def _crop_box_inside_image(
 def _cover_resize_crop(image: "Image.Image", size: tuple[int, int]) -> "Image.Image":
     target_width, target_height = size
     width, height = image.size
+
     scale = max(target_width / width, target_height / height)
     resized_size = (int(round(width * scale)), int(round(height * scale)))
+
     resized = image.resize(resized_size, Image.Resampling.LANCZOS)
 
     left = (resized.width - target_width) // 2
     top = (resized.height - target_height) // 2
+
     return resized.crop((left, top, left + target_width, top + target_height))
 
 
@@ -119,14 +141,31 @@ def _build_blurred_background(image: "Image.Image") -> "Image.Image":
     return background
 
 
-def _crop_speaker_portrait(image: "Image.Image", face: FaceBox | None) -> tuple["Image.Image", tuple[float, float] | None]:
+def _crop_speaker_portrait(
+    image: "Image.Image",
+    face: FaceBox | None,
+) -> tuple["Image.Image", tuple[float, float] | None]:
+    """
+    Build a speaker crop.
+
+    Returns:
+        foreground_crop:
+            Cropped image around the speaker or center fallback.
+        face_anchor:
+            Face center coordinate inside foreground_crop.
+            None when no face is detected.
+    """
     width, height = image.size
 
     if face is None:
+        # Fallback: create a 9:16 crop from the center of the image.
         crop_height = height
-        crop_width = min(width, int(round(crop_height * TARGET_WIDTH / TARGET_HEIGHT)))
-        if crop_width == width:
-            crop_height = min(height, int(round(crop_width * TARGET_HEIGHT / TARGET_WIDTH)))
+        crop_width = int(round(crop_height * TARGET_RATIO))
+
+        if crop_width > width:
+            crop_width = width
+            crop_height = int(round(crop_width / TARGET_RATIO))
+
         box = _crop_box_inside_image(
             width=width,
             height=height,
@@ -135,6 +174,7 @@ def _crop_speaker_portrait(image: "Image.Image", face: FaceBox | None) -> tuple[
             center_x=width / 2,
             center_y=height / 2,
         )
+
         return image.crop(box), None
 
     x, y, w, h = face
@@ -142,18 +182,22 @@ def _crop_speaker_portrait(image: "Image.Image", face: FaceBox | None) -> tuple[
     face_cx = x + w / 2
     face_cy = y + h / 2
 
+    # Large enough to keep head, neck, shoulders, and some background.
     crop_height = int(round(max(h * 6.0, w * 6.6, MIN_FACE_SIZE * 6)))
-    crop_width = int(round(crop_height * TARGET_WIDTH / TARGET_HEIGHT))
+    crop_width = int(round(crop_height * TARGET_RATIO))
+
     if crop_width > width:
         crop_width = width
-        crop_height = int(round(crop_width * TARGET_HEIGHT / TARGET_WIDTH))
+        crop_height = int(round(crop_width / TARGET_RATIO))
+
     if crop_height > height:
         crop_height = height
-        crop_width = int(round(crop_height * TARGET_WIDTH / TARGET_HEIGHT))
+        crop_width = int(round(crop_height * TARGET_RATIO))
 
-    # Keep the face above center inside the foreground crop so the final avatar
-    # has room for shoulders and remains stable for talking-head generation.
-    desired_face_y = crop_height * 0.26
+    # Put face slightly above center inside this crop.
+    # This gives room for shoulders and subtitle safe area below.
+    desired_face_y = crop_height * 0.28
+
     box = _crop_box_inside_image(
         width=width,
         height=height,
@@ -162,6 +206,7 @@ def _crop_speaker_portrait(image: "Image.Image", face: FaceBox | None) -> tuple[
         center_x=face_cx,
         center_y=face_cy + crop_height / 2 - desired_face_y,
     )
+
     left, top, right, bottom = box
     face_anchor = (face_cx - left, face_cy - top)
 
@@ -171,17 +216,34 @@ def _crop_speaker_portrait(image: "Image.Image", face: FaceBox | None) -> tuple[
 def _fit_foreground(image: "Image.Image") -> tuple["Image.Image", float]:
     max_width = int(round(TARGET_WIDTH * FOREGROUND_WIDTH_RATIO))
     max_height = int(round(TARGET_HEIGHT * FOREGROUND_HEIGHT_RATIO))
+
     scale = min(max_width / image.width, max_height / image.height)
-    size = (int(round(image.width * scale)), int(round(image.height * scale)))
-    return image.resize(size, Image.Resampling.LANCZOS), scale
+    resized_size = (
+        int(round(image.width * scale)),
+        int(round(image.height * scale)),
+    )
+
+    foreground = image.resize(resized_size, Image.Resampling.LANCZOS)
+    return foreground, scale
 
 
 def _compose_social_portrait(image: "Image.Image", face: FaceBox | None) -> "Image.Image":
+    """
+    Create final 1080x1920 portrait.
+
+    Composition:
+    - blurred 9:16 background
+    - face-aware foreground crop
+    - face positioned slightly above center
+    - lower area preserved for subtitles
+    """
     canvas = _build_blurred_background(image)
+
     foreground_crop, face_anchor = _crop_speaker_portrait(image, face)
     foreground, scale = _fit_foreground(foreground_crop.convert("RGB"))
 
     x = (TARGET_WIDTH - foreground.width) // 2
+
     if face_anchor is None:
         y = (TARGET_HEIGHT - foreground.height) // 2
     else:
@@ -194,14 +256,28 @@ def _compose_social_portrait(image: "Image.Image", face: FaceBox | None) -> "Ima
 
 
 def _light_enhance(image: "Image.Image") -> "Image.Image":
-    # ปรับเบา ๆ อย่าหนัก เพราะ GFPGAN/SadTalker จะ process ต่อ
-    image = ImageEnhance.Contrast(image).enhance(1.06)
+    """
+    Subtle enhancement only.
+
+    Do not over-process because GFPGAN/SadTalker may also enhance later.
+    """
+    image = ImageEnhance.Contrast(image).enhance(1.05)
     image = ImageEnhance.Sharpness(image).enhance(1.08)
-    image = image.filter(ImageFilter.UnsharpMask(radius=1.0, percent=80, threshold=3))
+    image = image.filter(ImageFilter.UnsharpMask(radius=1.0, percent=70, threshold=3))
     return image
 
 
 def normalize_portrait(source_path: Path, target_path: Path) -> tuple[Path, int | None, int | None]:
+    """
+    Normalize uploaded image for Reel/TikTok/IG talking-avatar generation.
+
+    Output:
+        - PNG
+        - 1080x1920
+        - 9:16 vertical
+        - face-aware composition when a face is detected
+        - valid centered fallback when no face is detected
+    """
     target_path.parent.mkdir(parents=True, exist_ok=True)
 
     if Image is None or ImageOps is None:
@@ -220,4 +296,4 @@ def normalize_portrait(source_path: Path, target_path: Path) -> tuple[Path, int 
 
         processed.save(target_path, format="PNG", optimize=True)
 
-        return target_path, processed.width, processed.height
+        return target_path, TARGET_WIDTH, TARGET_HEIGHT
