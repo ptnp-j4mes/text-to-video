@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Sparkles } from "lucide-react";
 
 type AppShellProps = {
-  active?: "home" | "generate" | "veo" | "voices" | "history";
+  active?: "home" | "generate" | "veo" | "ops" | "voices" | "history";
   children: ReactNode;
 };
 
@@ -25,6 +25,9 @@ export function AppShell({ active, children }: AppShellProps) {
             </Link>
             <Link className={active === "veo" ? "active" : ""} href="/veo">
               Veo image video
+            </Link>
+            <Link className={active === "ops" ? "active" : ""} href="/ops">
+              Agent HQ
             </Link>
             <Link className={active === "voices" ? "active" : ""} href="/voices">
               Voices
