@@ -75,6 +75,11 @@ class Settings:
 
     max_concurrent_jobs: int = 1
 
+    gemini_api_key: str | None = None
+    veo_model: str = "veo-3.1-generate-preview"
+    veo_poll_interval_seconds: int = 10
+    veo_operation_timeout_seconds: int = 420
+
     @property
     def repo_root(self) -> Path:
         return Path(__file__).resolve().parents[3]
@@ -143,4 +148,8 @@ def get_settings() -> Settings:
         voice_emotion_strength=_coerce(merged.get("VOICE_EMOTION_STRENGTH", "0.55"), float, 0.55),
         ffmpeg_command=merged.get("FFMPEG_COMMAND", "ffmpeg"),
         max_concurrent_jobs=_coerce(merged.get("MAX_CONCURRENT_JOBS", "1"), int, 1),
+        gemini_api_key=merged.get("GEMINI_API_KEY") or None,
+        veo_model=merged.get("VEO_MODEL", "veo-3.1-generate-preview"),
+        veo_poll_interval_seconds=_coerce(merged.get("VEO_POLL_INTERVAL_SECONDS", "10"), int, 10),
+        veo_operation_timeout_seconds=_coerce(merged.get("VEO_OPERATION_TIMEOUT_SECONDS", "420"), int, 420),
     )
