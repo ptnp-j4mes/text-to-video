@@ -5,6 +5,7 @@ Local-first monorepo for:
 - Voice cloning TTS with OmniVoice
 - Talking avatar generation with SadTalker
 - Optional lip-sync refinement with Wav2Lip
+- Google Veo image-to-video generation
 - FastAPI backend
 - Next.js 15 frontend
 - SQLite metadata store
@@ -27,7 +28,7 @@ This repository is wired for local development with:
 
 - FastAPI backend
 - Next.js 15 frontend
-- Local worker for OmniVoice + SadTalker
+- Local worker for OmniVoice + SadTalker + Google Veo
 - SQLite metadata store
 - Local file storage for uploads and outputs
 
@@ -137,6 +138,7 @@ bash scripts/run_all.sh
 
 - OmniVoice is invoked through the `omnivoice-infer` CLI.
 - SadTalker is expected at `models/SadTalker/inference.py` by default.
+- Google Veo image-to-video jobs use the Gemini API REST endpoint.
 - The worker looks for generated audio under `storage/outputs/audio` and video under `storage/outputs/video`.
 - If your model repositories live elsewhere, adjust `services/api/.env`.
 - Key environment overrides:
@@ -146,6 +148,10 @@ bash scripts/run_all.sh
   - `SADTALKER_PYTHON`
   - `SADTALKER_REPO`
   - `SADTALKER_SCRIPT`
+  - `GEMINI_API_KEY`
+  - `VEO_MODEL` (default: `veo-3.1-generate-preview`)
+  - `VEO_POLL_INTERVAL_SECONDS` (default: `10`)
+  - `VEO_OPERATION_TIMEOUT_SECONDS` (default: `420`)
 
 ### Suggested local setup
 
@@ -153,6 +159,15 @@ bash scripts/run_all.sh
 git clone https://github.com/OpenTalker/SadTalker.git models/SadTalker
 pip install git+https://github.com/k2-fsa/OmniVoice.git
 ```
+
+### Google Veo image-to-video setup
+
+1. Create or update `services/api/.env`.
+2. Add `GEMINI_API_KEY=<your Gemini API key>`.
+3. Open the web app at `http://127.0.0.1:5431/veo`.
+4. Upload an image, write a motion prompt, and submit the job.
+
+Veo outputs are queued in SQLite like the existing avatar jobs. The worker saves generated MP4 files to `storage/outputs/video`.
 
 ## Default ports
 
