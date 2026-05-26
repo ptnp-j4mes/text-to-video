@@ -1,9 +1,10 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
 
 type AppShellProps = {
   active?: "home" | "generate" | "veo" | "voices" | "history";
-  children: React.ReactNode;
+  children: ReactNode;
 };
 
 export function AppShell({ active, children }: AppShellProps) {
