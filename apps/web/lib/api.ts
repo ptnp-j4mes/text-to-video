@@ -147,6 +147,17 @@ export async function createAvatarJob(payload: {
   });
 }
 
+export async function createVeoImageVideoJob(form: FormData): Promise<{ job_id: string; status: string }> {
+  const response = await fetch(`${baseUrl}/jobs/generate-veo-image-video`, {
+    method: "POST",
+    body: form,
+  });
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+  return (await response.json()) as { job_id: string; status: string };
+}
+
 export async function retryJob(jobId: string): Promise<{ job_id: string; status: string }> {
   return requestJson<{ job_id: string; status: string }>(`/jobs/${jobId}/retry`, {
     method: "POST",
