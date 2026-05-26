@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Sparkles } from "lucide-react";
 
 type AppShellProps = {
-  active?: "home" | "generate" | "voices" | "history";
+  active?: "home" | "generate" | "veo" | "voices" | "history";
   children: React.ReactNode;
 };
 
@@ -22,6 +22,9 @@ export function AppShell({ active, children }: AppShellProps) {
             <Link className={active === "generate" ? "active" : ""} href="/generate">
               Generate
             </Link>
+            <Link className={active === "veo" ? "active" : ""} href="/veo">
+              Veo image video
+            </Link>
             <Link className={active === "voices" ? "active" : ""} href="/voices">
               Voices
             </Link>
@@ -35,7 +38,7 @@ export function AppShell({ active, children }: AppShellProps) {
       <div className="container" style={{ paddingTop: "0.5rem" }}>
         <div className="footer-note">
           <Sparkles size={14} style={{ verticalAlign: "text-top", marginRight: 6 }} />
-          Local-first stack: Next.js 15, FastAPI, OmniVoice, and SadTalker.
+          Local-first stack: Next.js 15, FastAPI, OmniVoice, SadTalker, and Google Veo.
         </div>
       </div>
     </div>
